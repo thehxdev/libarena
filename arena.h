@@ -5,15 +5,18 @@
  * Author: Hossein Khosravi
  */
 
+/**
+ * TODO:
+ *  - Extend buffers
+ */
+
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 
 /**
  * Definitions
- */
-
-/**
- * TODO:
- *  - Handle __cplusplus
- *  - Extend buffers
  */
 
 #ifndef LIBARENA_ARENA_H
@@ -118,3 +121,8 @@ int arena_destroy(Arena_t *arena) {
 }
 
 #endif /* LIBARENA_ARENA_IMPLEMENTATION */
+
+
+#ifdef __cplusplus
+}
+#endif
