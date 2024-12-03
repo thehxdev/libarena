@@ -54,8 +54,8 @@ extern "C" {
 #define LIBARENA_DEFAULT_SIZE    (4096)
 
 typedef struct __arena Arena_t;
-Arena_t arena_new(size_t size);
-void *arena_alloc(Arena_t *arena, size_t size);
+Arena_t arena_new(unsigned long size);
+void *arena_alloc(Arena_t *arena, unsigned long size);
 void arena_clear(Arena_t *arena);
 int arena_destroy(Arena_t *arena);
 
@@ -84,7 +84,7 @@ struct __arena {
     void *end;
 };
 
-Arena_t arena_new(size_t size) {
+Arena_t arena_new(unsigned long size) {
     Arena_t a;
 #ifdef LIBARENA_PLAT_UNIX
     a.buf = mmap(NULL, size, PROT_READ | PROT_WRITE | PROT_EXEC, MAP_PRIVATE | MAP_ANON, -1, 0);
@@ -96,7 +96,7 @@ Arena_t arena_new(size_t size) {
     return a;
 }
 
-void *arena_alloc(Arena_t *arena, size_t size) {
+void *arena_alloc(Arena_t *arena, unsigned long size) {
     void *p = arena->ptr;
     /* TODO: At this time the buffer is not growable.
      * Handle this edge cases by allocating new buffer and extending
@@ -114,7 +114,7 @@ void arena_clear(Arena_t *arena) {
 
 int arena_destroy(Arena_t *arena) {
 #ifdef LIBARENA_PLAT_UNIX
-    return (!munmap(arena->buf, arena->end-arena->buf));
+    return (!munmap(arena->buf, (unsigned long)arena->end-(unsigned long)arena->buf));
 #else
     return VirtualFree(arena->buf, 0, MEM_RELEASE);
 #endif
