@@ -19,8 +19,8 @@ extern "C" {
  * Definitions
  */
 
-#ifndef LIBARENA_ARENA_H
-#define LIBARENA_ARENA_H
+#ifndef _LIBARENA_ARENA_H_
+#define _LIBARENA_ARENA_H_
 
 /* check https://stackoverflow.com/a/8249232/19005972 */
 #if defined(_WIN32) || defined(_WIN64) || defined(__CYGWIN__)
@@ -57,9 +57,9 @@ typedef struct __arena Arena_t;
 Arena_t arena_new(unsigned long size);
 void *arena_alloc(Arena_t *arena, unsigned long size);
 void arena_clear(Arena_t *arena);
-int arena_destroy(Arena_t *arena);
+void arena_destroy(Arena_t *arena);
 
-#endif /* LIBARENA_ARENA_H */
+#endif /* _LIBARENA_ARENA_H_ */
 
 
 /**
@@ -75,7 +75,7 @@ int arena_destroy(Arena_t *arena);
     #define NULL ((void*)0)
 #endif /* NULL */
 
-#define PTR_SIZE    (sizeof(void*))
+#define LIBARENA_PTR_SIZE   (sizeof(void*))
 
 #ifdef LIBARENA_PLAT_UNIX
     #define __ALLOC(size)   \
@@ -85,7 +85,20 @@ int arena_destroy(Arena_t *arena);
         VirtualAlloc(NULL, (size), MEM_COMMIT | MEM_RESERVE, PAGE_EXECUTE_READWRITE);
 #endif
 
-#define __calc_free_space(ptr, end) ((size_t)((end) - (ptr) - 1))
+#ifdef LIBARENA_PLAT_UNIX
+    #define __DEALLOC(p, size)  \
+        munmap((p), (size));
+#else
+    #define __DEALLOC(p, size)  \
+        VirtualFree((p), 0, MEM_RELEASE);
+#endif
+
+
+#define __next_buf_location_from_base(base, size) \
+    ((uintptr_t*)((base) + (size) - LIBARENA_PTR_SIZE))
+
+#define __next_buf_addr_from_base(base, size)   \
+    ((void*)(*__next_buf_location_from_base(base, size)))
 
 
 struct __arena {
@@ -98,51 +111,57 @@ struct __arena {
     /* End of buffer */
     void *end;
 
-    /* Remaining free bytes in current buffer */
-    size_t free;
-
     /* Size of buffer */
     size_t size;
 };
 
 Arena_t arena_new(unsigned long size) {
     Arena_t a;
+    a.size = size;
     a.base = __ALLOC(size);
     assert(a.base && "base buffer is NULL");
     a.ptr = a.base;
-    a.end = a.base + size - PTR_SIZE;
-    a.size = size;
-    a.free = __calc_free_space(a.ptr, a.end);
+    a.end = __next_buf_location_from_base(a.base, a.size);
+    *((uintptr_t*)a.end) = 0;
     return a;
 }
 
 void *arena_alloc(Arena_t *arena, unsigned long size) {
+    /* Requested size is bigger than arena buffer size */
+    if (size > arena->size)
+        return NULL;
+
     if (arena->ptr + size >= arena->end) {
 #ifdef LIBARENA_MULTI_BUFFER
         arena->ptr = __ALLOC(arena->size);
         assert(arena->ptr && "allocated buffer is NULL");
         *((uintptr_t*)arena->end) = (uintptr_t)arena->ptr;
-        arena->end = arena->ptr + arena->size - PTR_SIZE;
+        arena->end = __next_buf_location_from_base(arena->ptr, arena->size);
+        *((uintptr_t*)arena->end) = 0;
 #else
         return NULL;
 #endif
     }
     void *p = arena->ptr;
     arena->ptr += size;
-    arena->free = __calc_free_space(arena->ptr, arena->end);
     return p;
 }
 
+static void __destroy_buffers(void *base, const size_t size) {
+    if (!base)
+        return;
+    void *next = __next_buf_addr_from_base(base, size);
+    __destroy_buffers(next, size);
+    __DEALLOC(base, size);
+}
+
 void arena_clear(Arena_t *arena) {
+    __destroy_buffers(__next_buf_addr_from_base(arena->base, arena->size), arena->size);
     arena->ptr = arena->base;
 }
 
-int arena_destroy(Arena_t *arena) {
-#ifdef LIBARENA_PLAT_UNIX
-    return (!munmap(arena->base, arena->size));
-#else
-    return VirtualFree(arena->base, 0, MEM_RELEASE);
-#endif
+void arena_destroy(Arena_t *arena) {
+    __destroy_buffers(arena->base, arena->size);
 }
 
 #endif /* LIBARENA_ARENA_IMPLEMENTATION */
