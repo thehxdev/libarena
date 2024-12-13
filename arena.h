@@ -1,13 +1,8 @@
 /**
  * arena.h
- * Single-header library to use fixed buffer memory allocator (Arena allocator).
+ * Single-header Arena allocator library
  *
  * Author: Hossein Khosravi
- */
-
-/**
- * TODO:
- *  - Extend buffers
  */
 
 #ifdef __cplusplus
