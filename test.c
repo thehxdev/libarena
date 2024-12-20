@@ -1,7 +1,7 @@
 #include <stdio.h>
 #include <assert.h>
 
-#define LIBARENA_ARENA_IMPLEMENTATION
+#define LIBARENA_IMPLEMENTATION
 #define LIBARENA_MULTI_BUFFER
 #include "arena.h"
 

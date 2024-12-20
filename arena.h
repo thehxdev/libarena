@@ -61,7 +61,7 @@ void arena_destroy(Arena_t *arena);
  * Implementation
  */
 
-#ifdef LIBARENA_ARENA_IMPLEMENTATION
+#ifdef LIBARENA_IMPLEMENTATION
 
 #include <stdint.h>
 #include <assert.h>
