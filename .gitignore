@@ -1,3 +1,4 @@
+*.o
 compile_flags.txt
 compile_commands.json
 a.out
