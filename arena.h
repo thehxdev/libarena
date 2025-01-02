@@ -157,6 +157,9 @@ void arena_clear(Arena_t *arena) {
 
 void arena_destroy(Arena_t *arena) {
     __destroy_buffers(arena->base, arena->size);
+    arena->base = NULL;
+    arena->ptr  = NULL;
+    arena->end  = NULL;
 }
 
 #endif /* LIBARENA_ARENA_IMPLEMENTATION */
