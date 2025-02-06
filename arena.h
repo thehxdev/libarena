@@ -17,7 +17,7 @@ extern "C" {
 #ifndef _LIBARENA_ARENA_H_
 #define _LIBARENA_ARENA_H_
 
-/* check https://stackoverflow.com/a/8249232/19005972 */
+// check https://stackoverflow.com/a/8249232/19005972
 #if defined(_WIN32) || defined(_WIN64) || defined(__CYGWIN__)
     #define LIBARENA_PLAT_WINDOWS
 #elif defined(__APPLE__) || defined(__MACH__)
@@ -26,41 +26,42 @@ extern "C" {
     #define LIBARENA_PLAT_LINUX
 #elif defined(__FreeBSD__)
     #define LIBARENA_PLAT_FREEBSD
+#elif defined(unix) || defined(__unix) || defined(__unix__)
+    #define LIBARENA_PLAT_UNIX
 #else
     #define LIBARENA_PLAT_UNKNOWN
-#endif /* platform */
-
-#if defined(LIBARENA_PLAT_LINUX) || defined(LIBARENA_PLAT_FREEBSD)  \
-    || defined(unix) || defined(__unix) || defined(__unix__) || defined(LIBARENA_PLAT_DARWIN)
-    #define LIBARENA_PLAT_UNIX
-#endif /* unix platform */
-
-#if defined(LIBARENA_PLAT_UNKNOWN) && !defined(LIBARENA_PLAT_UNIX)
-    #error "unknown platform"
 #endif
 
-#if defined(LIBARENA_PLAT_UNIX)
+#if defined(LIBARENA_PLAT_UNKNOWN) || defined(LIBARENA_PLAT_UNIX)
+    #error "unknown or unsupported platform"
+#endif
+
+#if defined(LIBARENA_PLAT_LINUX) || defined(LIBARENA_PLAT_FREEBSD) \
+    || defined(LIBARENA_PLAT_DARWIN)
+    #ifdef LIBARENA_PLAT_DARWIN
+        #include <sys/types.h>
+    #endif
     #include <sys/mman.h>
 #elif defined(LIBARENA_PLAT_WINDOWS)
     #include <Windows.h>
     #include <Memoryapi.h>
 #endif
 
-#define LIBARENA_DEFAULT_SIZE    (4096)
 
 typedef struct __arena Arena_t;
-Arena_t arena_new(unsigned long size);
+Arena_t arena_new(size_t size);
 void *arena_alloc(Arena_t *arena, unsigned long size);
 void arena_clear(Arena_t *arena);
 void arena_destroy(Arena_t *arena);
 
-#endif /* _LIBARENA_ARENA_H_ */
+#endif // _LIBARENA_ARENA_H_
 
 
 /**
  * Implementation
  */
 
+#define LIBARENA_IMPLEMENTATION
 #ifdef LIBARENA_IMPLEMENTATION
 
 #include <stdint.h>
@@ -68,22 +69,20 @@ void arena_destroy(Arena_t *arena);
 
 #ifndef NULL
     #define NULL ((void*)0)
-#endif /* NULL */
+#endif // NULL
 
+#define LIBARENA_DEFAULT_SIZE    (4096)
 #define LIBARENA_PTR_SIZE   (sizeof(void*))
 
-#ifdef LIBARENA_PLAT_UNIX
+#if defined(LIBARENA_PLAT_LINUX) || defined(LIBARENA_PLAT_FREEBSD) \
+    || defined(LIBARENA_PLAT_DARWIN)
     #define __ALLOC(size)   \
-        mmap(NULL, (size), PROT_READ | PROT_WRITE | PROT_EXEC, MAP_PRIVATE | MAP_ANON, -1, 0)
-#else
-    #define __ALLOC(size)   \
-        VirtualAlloc(NULL, (size), MEM_COMMIT | MEM_RESERVE, PAGE_EXECUTE_READWRITE);
-#endif
-
-#ifdef LIBARENA_PLAT_UNIX
+        mmap(NULL, (size), PROT_READ | PROT_WRITE, MAP_PRIVATE | MAP_ANON, -1, 0)
     #define __DEALLOC(p, size)  \
         munmap((p), (size));
-#else
+#elif defined(LIBARENA_PLAT_WINDOWS)
+    #define __ALLOC(size)   \
+        VirtualAlloc(NULL, (size), MEM_COMMIT | MEM_RESERVE, PAGE_READWRITE);
     #define __DEALLOC(p, size)  \
         VirtualFree((p), 0, MEM_RELEASE);
 #endif
@@ -97,22 +96,23 @@ void arena_destroy(Arena_t *arena);
 
 
 struct __arena {
-    /* Pointer to first buffer */
+    // Pointer to first buffer
     void *base;
 
-    /* Pointer to top of buffer */
+    // Pointer to top of buffer
     void *ptr;
 
-    /* End of buffer */
+    // End of buffer
     void *end;
 
-    /* Size of buffer */
+    // Size of buffer
     size_t size;
 };
 
-Arena_t arena_new(unsigned long size) {
-    Arena_t a;
-    a.size = size;
+Arena_t arena_new(size_t size) {
+    volatile Arena_t a = { 0 };
+    // pass 0 as size argument to use default size
+    a.size = size ? size : LIBARENA_DEFAULT_SIZE;
     a.base = __ALLOC(size);
     assert(a.base && "base buffer is NULL");
     a.ptr = a.base;
@@ -122,7 +122,7 @@ Arena_t arena_new(unsigned long size) {
 }
 
 void *arena_alloc(Arena_t *arena, unsigned long size) {
-    /* Requested size is bigger than arena buffer size */
+    // Requested size is bigger than arena buffer size
     if (size > arena->size)
         return NULL;
 
@@ -162,7 +162,7 @@ void arena_destroy(Arena_t *arena) {
     arena->end  = NULL;
 }
 
-#endif /* LIBARENA_ARENA_IMPLEMENTATION */
+#endif // LIBARENA_ARENA_IMPLEMENTATION
 
 
 #ifdef __cplusplus
