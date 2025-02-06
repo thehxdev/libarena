@@ -91,31 +91,31 @@ void arena_destroy(Arena_t *arena);
     ((uintptr_t*)((base) + (size) - LIBARENA_PTR_SIZE))
 
 #define __next_buf_addr_from_base(base, size)   \
-    ((void*)(*__next_buf_location_from_base(base, size)))
+    ((uint8_t*)(*__next_buf_location_from_base(base, size)))
 
 
 struct __arena {
     // Pointer to first buffer
-    void *base;
+    uint8_t *base;
 
     // Pointer to top of buffer
-    void *ptr;
+    uint8_t *ptr;
 
     // End of buffer
-    void *end;
+    uint8_t *end;
 
     // Size of buffer
     size_t size;
 };
 
 Arena_t arena_new(size_t size) {
-    volatile Arena_t a = { 0 };
+    Arena_t a = { 0 };
     // pass 0 as size argument to use default size
     a.size = size ? size : LIBARENA_DEFAULT_SIZE;
-    a.base = __ALLOC(size);
+    a.base = (uint8_t*)__ALLOC(a.size);
     assert(a.base && "base buffer is NULL");
     a.ptr = a.base;
-    a.end = __next_buf_location_from_base(a.base, a.size);
+    a.end = (uint8_t*)__next_buf_location_from_base(a.base, a.size);
     *((uintptr_t*)a.end) = 0;
     return a;
 }
@@ -130,21 +130,21 @@ void *arena_alloc(Arena_t *arena, unsigned long size) {
         arena->ptr = __ALLOC(arena->size);
         assert(arena->ptr && "allocated buffer is NULL");
         *((uintptr_t*)arena->end) = (uintptr_t)arena->ptr;
-        arena->end = __next_buf_location_from_base(arena->ptr, arena->size);
+        arena->end = (uint8_t*)__next_buf_location_from_base(arena->ptr, arena->size);
         *((uintptr_t*)arena->end) = 0;
 #else
         return NULL;
 #endif
     }
-    void *p = arena->ptr;
+    uint8_t *p = arena->ptr;
     arena->ptr += size;
     return p;
 }
 
-static void __destroy_buffers(void *base, const size_t size) {
+static void __destroy_buffers(uint8_t *base, const size_t size) {
     if (!base)
         return;
-    void *next = __next_buf_addr_from_base(base, size);
+    uint8_t *next = __next_buf_addr_from_base(base, size);
     __destroy_buffers(next, size);
     __DEALLOC(base, size);
 }

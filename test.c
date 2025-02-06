@@ -8,8 +8,9 @@
 #define XS_LEN  (20)
 
 int main(void) {
-    int i;
-    Arena_t a = arena_new(LIBARENA_DEFAULT_SIZE);
+    int i = 0;
+    // pass 0 as size to use default arena size (one page size)
+    Arena_t a = arena_new(0);
     assert(a.base != NULL && "buffer is NULL");
 
     int *xs = (int*)arena_alloc(&a, sizeof(int) * XS_LEN);
