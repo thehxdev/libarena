@@ -9,9 +9,9 @@ Since the library is single-header, include `arena.h` file in **_JUST ONE SOURCE
 If you want Multi-Buffer support, define `LIBARENA_MULTI_BUFFER` too in that source file just **_once_**.
 You can include `arena.h` in all source files. But the implementation details MUST be in one file.
 ```c
-/* include the implementation */
+// include the implementation
 #define LIBARENA_ARENA_IMPLEMENTATION
-/* enable multi-buffer support */
+// enable multi-buffer support
 #define LIBARENA_MULTI_BUFFER
 #include "arena.h"
 ```
@@ -22,13 +22,14 @@ Construct a new `Arena_t` instance. This type holds and manages all information 
 `arena_new` function accepts buffer's size. The default size is one page size (4096 bytes).
 Since `libarena` uses `mmap` on \*nix systems and `VirtualAlloc` on windows, it's better to use the default size.
 ```c
-Arena_t a = arena_new(LIBARENA_DEFAULT_SIZE);
+// pass 0 to use default size
+Arena_t a = arena_new(0);
 ```
 
 ### Allocate memory
 Allocate on arena and get a pointer.
 ```c
-/* allocate 10 integers */
+// allocate 10 integers
 int *xs = arena_alloc(&a, sizeof(int) * 10);
 ```
 
